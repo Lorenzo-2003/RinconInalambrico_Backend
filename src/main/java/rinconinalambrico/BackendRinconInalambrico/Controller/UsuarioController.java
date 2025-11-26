@@ -44,7 +44,7 @@ public class UsuarioController {
     // Obtener usuario por email
     @GetMapping("/email/{email}")
     public ResponseEntity<Usuario> obtenerUsuarioPorEmail(@PathVariable String email) {
-        Optional<Usuario> usuario = usuarioService.obtenerUsuarioPorEmail(email);
+        Optional<Usuario> usuario = usuarioService.obtenerUsuarioPorCorreo(email);
         return usuario.map(ResponseEntity::ok)
                      .orElse(ResponseEntity.notFound().build());
     }

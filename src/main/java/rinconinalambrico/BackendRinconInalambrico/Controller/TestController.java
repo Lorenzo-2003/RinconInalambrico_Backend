@@ -5,6 +5,12 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import rinconinalambrico.BackendRinconInalambrico.Entity.Rol;
+import rinconinalambrico.BackendRinconInalambrico.Entity.Usuario;
+import rinconinalambrico.BackendRinconInalambrico.Service.UsuarioService;
+import rinconinalambrico.BackendRinconInalambrico.Repository.RolRepository;
+
+
 import javax.sql.DataSource;
 import java.sql.Connection;
 import java.util.List;
@@ -18,6 +24,12 @@ public class TestController {
 
     @Autowired
     private JdbcTemplate jdbcTemplate;
+
+    @Autowired
+    private UsuarioService usuarioService;  // ✅ FALTABA ESTA INYECCIÓN
+
+    @Autowired
+    private RolRepository rolRepository;
 
     // 1. Endpoint básico de prueba
     @GetMapping("/test")
@@ -112,6 +124,36 @@ public class TestController {
             "timestamp", java.time.LocalDateTime.now().toString()
         );
     }
+
+    // 8. ✅ NUEVO: Test de creación de usuario CON SERVICE
+    @GetMapping("/test-usuario")
+public String testUsuario() {
+    try {
+        // 1. Buscar el rol "cliente" en la base de datos
+        Rol rolCliente = rolRepository.findByNombre("cliente")
+            .orElseThrow(() -> new RuntimeException("No se encontró el rol 'cliente'"));
+
+        // 2. Crear un usuario de prueba
+        Usuario usuario = new Usuario();
+        usuario.setNombre("Usuario Prueba");           // ✅ SIN "nombre:"
+        usuario.setRut("21352313-9");                  // ✅ SIN "rut:"
+        usuario.setCorreo("test@test.com");            // ✅ SIN "correo:"
+        usuario.setContrasena("123456");               // ✅ SIN "contrasena:"
+        usuario.setRol(rolCliente);                    // ✅ ASIGNAR EL OBJETO ROL
+
+        // 3. Guardar en la base de datos
+        Usuario usuarioGuardado = usuarioService.crearUsuario(usuario);
+        
+        return "✅ Usuario creado exitosamente!<br>" +
+               "ID: " + usuarioGuardado.getId() + "<br>" +
+               "Nombre: " + usuarioGuardado.getNombre() + "<br>" +
+               "Correo: " + usuarioGuardado.getCorreo() + "<br>" +
+               "Rol: " + usuarioGuardado.getRol().getNombre();
+               
+    } catch (Exception e) {
+        return "❌ Error al crear usuario: " + e.getMessage();
+    }
+}
 
     private boolean checkDatabase() {
         try {
