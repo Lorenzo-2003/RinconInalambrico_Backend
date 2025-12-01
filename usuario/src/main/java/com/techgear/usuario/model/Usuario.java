@@ -34,7 +34,7 @@ public class Usuario {
     private String correo;
 
     @Column(nullable = true)
-    private int telefono;
+    private String telefono;
 
     @Column(nullable = false)
     private String contrasena;

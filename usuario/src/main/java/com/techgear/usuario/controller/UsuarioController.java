@@ -1,9 +1,12 @@
 package com.techgear.usuario.controller;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -26,11 +29,75 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 
 @RestController
 @RequestMapping("/usuario")
+@CrossOrigin(origins = {"http://localhost:3000", "http://18.207.254.56"}) // 🔥 IMPORTANTE para CORS
 @Tag(name = "Usuarios",description = "Operaciones CRUD de usuario")
 public class UsuarioController {
 
     @Autowired
     private UsuarioService usuarioService;
+
+    // 🔥 NUEVO ENDPOINT: LOGIN
+@PostMapping("/login")
+@Operation(summary="Login de usuario", description="Autentica usuario con correo y contraseña")
+@ApiResponses(value = {
+    @ApiResponse(responseCode = "200", description = "Login exitoso", 
+        content = @Content(schema = @Schema(implementation = Usuario.class))),
+    @ApiResponse(responseCode = "401", description = "Credenciales incorrectas"),
+    @ApiResponse(responseCode = "404", description = "Usuario no encontrado")
+})
+public ResponseEntity<?> login(@RequestBody LoginRequest loginRequest) {
+    System.out.println("🎯 ==== LOGIN ATTEMPT ====");
+    System.out.println("📧 Correo: " + loginRequest.getCorreo());
+    System.out.println("🔑 Contraseña: " + loginRequest.getContrasena());
+    
+    try {
+        System.out.println("1. Obteniendo todos los usuarios...");
+        List<Usuario> usuarios = usuarioService.getAllUsuarios();
+        System.out.println("2. Total usuarios obtenidos: " + usuarios.size());
+        
+        // Mostrar primeros 3 usuarios para debug
+        for (int i = 0; i < Math.min(3, usuarios.size()); i++) {
+            Usuario u = usuarios.get(i);
+            System.out.println("   Usuario " + i + ": " + u.getCorreo() + " - " + u.getNombre());
+        }
+        
+        // Buscar usuario por correo y contraseña
+        Usuario usuarioEncontrado = null;
+        for (Usuario usuario : usuarios) {
+            if (usuario.getCorreo() != null && 
+                usuario.getCorreo().equals(loginRequest.getCorreo()) && 
+                usuario.getContrasena() != null && 
+                usuario.getContrasena().equals(loginRequest.getContrasena())) {
+                
+                usuarioEncontrado = usuario;
+                break;
+            }
+        }
+        
+        if (usuarioEncontrado == null) {
+            System.out.println("3. ❌ Credenciales incorrectas - Usuario no encontrado");
+            return ResponseEntity.status(401).body("Credenciales incorrectas");
+        }
+        
+        System.out.println("3. ✅ Usuario encontrado: " + usuarioEncontrado.getNombre());
+        
+        // Crear respuesta simplificada
+        Map<String, Object> response = new HashMap<>();
+        response.put("id", usuarioEncontrado.getId());
+        response.put("nombre", usuarioEncontrado.getNombre());
+        response.put("correo", usuarioEncontrado.getCorreo());
+        response.put("rol", usuarioEncontrado.getRol() != null ? usuarioEncontrado.getRol().getNombre() : "usuario");
+        response.put("telefono", usuarioEncontrado.getTelefono());
+        response.put("status", "success");
+        
+        return ResponseEntity.ok(response);
+        
+    } catch (Exception e) {
+        System.err.println("💥 ERROR en login:");
+        e.printStackTrace();
+        return ResponseEntity.status(500).body("Error interno: " + e.getMessage());
+    }
+}
 
     @GetMapping()
     @Operation(summary="Obtener todos los usuarios",description = "Obtiene una lista de todos los usuarios")
@@ -119,4 +186,16 @@ public class UsuarioController {
             return ResponseEntity.internalServerError().build();
         }
     }
+}
+
+// 🔥 CLASE AUXILIAR PARA LOGIN (agrégala al FINAL del mismo archivo)
+class LoginRequest {
+    private String correo;
+    private String contrasena;
+    
+    // Getters y Setters
+    public String getCorreo() { return correo; }
+    public void setCorreo(String correo) { this.correo = correo; }
+    public String getContrasena() { return contrasena; }
+    public void setContrasena(String contrasena) { this.contrasena = contrasena; }
 }
