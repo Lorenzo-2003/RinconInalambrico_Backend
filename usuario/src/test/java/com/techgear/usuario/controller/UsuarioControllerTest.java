@@ -47,7 +47,7 @@ public class UsuarioControllerTest {
         usuario.setRut("19.615.206-7");
         usuario.setNombre("Testing");
         usuario.setCorreo("gigor3001@gmail.com");
-        usuario.setTelefono(975445991);
+        usuario.setTelefono("975445991");
         usuario.setContrasena("test1234");
         usuario.setRol(rolMock);
     }
