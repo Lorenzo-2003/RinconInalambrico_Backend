@@ -30,7 +30,7 @@ public class UsuarioServiceTest {
 
     @Test
     public void testFindAll() {
-        when(usuarioRepository.findAll()).thenReturn(List.of(new Usuario(1, "19.615.206-7","Tester","gigor3001@gmail.com","975445001","test1234",rol)));
+        when(usuarioRepository.findAll()).thenReturn(List.of(new Usuario(1, "19.615.206-7","Tester","gigor3001@gmail.com",975445001,"test1234",rol)));
         List<Usuario> usuarios = usuarioRepository.findAll();
         assertNotNull(usuarios);
         assertEquals(1, usuarios.size());
@@ -39,7 +39,7 @@ public class UsuarioServiceTest {
     @Test
     public void testFindById() {
         Integer id = 1;
-        Usuario usuario = new Usuario(id, "19.615.206-7","Tester","gigor3001@gmail.com","975445001","test1234",rol);
+        Usuario usuario = new Usuario(id, "19.615.206-7","Tester","gigor3001@gmail.com",975445001,"test1234",rol);
         when(usuarioRepository.findById(id)).thenReturn(Optional.of(usuario));
         Usuario found = usuarioService.getUsuario(id);
         assertNotNull(found);
@@ -48,7 +48,7 @@ public class UsuarioServiceTest {
 
     @Test
     public void testSave() {
-        Usuario usuario = new Usuario(1, "19.615.206-7","Tester","gigor3001@gmail.com","975445001","test1234",rol);
+        Usuario usuario = new Usuario(1, "19.615.206-7","Tester","gigor3001@gmail.com",975445001,"test1234",rol);
         when(usuarioRepository.save(usuario)).thenReturn(usuario);
         Usuario saved = usuarioService.saveUsuario(usuario);
         assertNotNull(saved);

@@ -1,12 +1,10 @@
 package com.techgear.pago.service;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -88,46 +86,27 @@ public class FacturaService {
     public Factura processPaymentWithStockValidation(Factura factura) throws Exception {
         // 1. Obtener detalles del carrito
         String carroUrl = carroServiceUrl + "/carro/" + factura.getCarroId();
-        ResponseEntity<Map<String, Object>> carroResponse = restTemplate.exchange(
-            carroUrl, HttpMethod.GET, null, new ParameterizedTypeReference<Map<String, Object>>() {});
+        ResponseEntity<Map> carroResponse = restTemplate.exchange(
+            carroUrl, HttpMethod.GET, null, Map.class);
         
-        if (!carroResponse.getStatusCode().is2xxSuccessful() || carroResponse.getBody() == null) {
+        if (!carroResponse.getStatusCode().is2xxSuccessful()) {
             throw new Exception("Error al obtener detalles del carrito");
         }
 
         Map<String, Object> carroData = carroResponse.getBody();
         
         // 2. Validar stock para todos los productos en el carrito
-        if (carroData != null && carroData.containsKey("productos")) {
-            Object productosObj = carroData.get("productos");
-            if (productosObj instanceof List) {
-                List<?> rawList = (List<?>) productosObj;
-                List<Map<String, Object>> productos = new ArrayList<>();
+        if (carroData.containsKey("productos")) {
+            List<Map<String, Object>> productos = (List<Map<String, Object>>) carroData.get("productos");
+            
+            for (Map<String, Object> item : productos) {
+                Map<String, Object> producto = (Map<String, Object>) item.get("producto");
+                Integer productId = (Integer) producto.get("id");
+                Integer cantidad = (Integer) item.get("cantidad");
                 
-                // Convertir y validar cada elemento
-                for (Object item : rawList) {
-                    if (item instanceof Map) {
-                        @SuppressWarnings("unchecked")
-                        Map<String, Object> mapItem = (Map<String, Object>) item;
-                        productos.add(mapItem);
-                    }
-                }
-                
-                for (Map<String, Object> item : productos) {
-                    Object productoObj = item.get("producto");
-                    Object cantidadObj = item.get("cantidad");
-                    
-                    if (productoObj instanceof Map && cantidadObj instanceof Integer) {
-                        @SuppressWarnings("unchecked")
-                        Map<String, Object> producto = (Map<String, Object>) productoObj;
-                        Integer productId = (Integer) producto.get("id");
-                        Integer cantidad = (Integer) cantidadObj;
-                        
-                        // Validar stock llamando al microservicio catalogo
-                        if (productId != null && cantidad != null && !validateStock(productId, cantidad)) {
-                            throw new Exception("Stock insuficiente para producto: " + producto.get("nombre"));
-                        }
-                    }
+                // Validar stock llamando al microservicio catalogo
+                if (!validateStock(productId, cantidad)) {
+                    throw new Exception("Stock insuficiente para producto: " + producto.get("nombre"));
                 }
             }
         }
@@ -137,42 +116,21 @@ public class FacturaService {
 
         // 4. Reducir stock después de crear la factura exitosamente
         try {
-            if (carroData != null && carroData.containsKey("productos")) {
-                Object productosObj = carroData.get("productos");
-                if (productosObj instanceof List) {
-                    List<?> rawList = (List<?>) productosObj;
-                    List<Map<String, Object>> productos = new ArrayList<>();
+            if (carroData.containsKey("productos")) {
+                List<Map<String, Object>> productos = (List<Map<String, Object>>) carroData.get("productos");
+                
+                for (Map<String, Object> item : productos) {
+                    Map<String, Object> producto = (Map<String, Object>) item.get("producto");
+                    Integer productId = (Integer) producto.get("id");
+                    Integer cantidad = (Integer) item.get("cantidad");
                     
-                    for (Object item : rawList) {
-                        if (item instanceof Map) {
-                            @SuppressWarnings("unchecked")
-                            Map<String, Object> mapItem = (Map<String, Object>) item;
-                            productos.add(mapItem);
-                        }
-                    }
-                    
-                    for (Map<String, Object> item : productos) {
-                        Object productoObj = item.get("producto");
-                        Object cantidadObj = item.get("cantidad");
-                        
-                        if (productoObj instanceof Map && cantidadObj instanceof Integer) {
-                            @SuppressWarnings("unchecked")
-                            Map<String, Object> producto = (Map<String, Object>) productoObj;
-                            Integer productId = (Integer) producto.get("id");
-                            Integer cantidad = (Integer) cantidadObj;
-                            
-                            if (productId != null && cantidad != null) {
-                                reduceStock(productId, cantidad);
-                            }
-                        }
-                    }
+                    reduceStock(productId, cantidad);
                 }
             }
         } catch (Exception e) {
             // Si falla la reducción de stock, podríamos necesitar rollback
             // Pero por simplicidad, loggeamos el error
             System.err.println("Error al reducir stock: " + e.getMessage());
-            throw e; // Re-lanzar para rollback transaccional
         }
 
         return savedFactura;
@@ -184,20 +142,13 @@ public class FacturaService {
     private boolean validateStock(Integer productId, Integer quantity) {
         try {
             String stockUrl = catalogoServiceUrl + "/producto/" + productId;
-            ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
-                stockUrl, HttpMethod.GET, null, new ParameterizedTypeReference<Map<String, Object>>() {});
+            ResponseEntity<Map> response = restTemplate.exchange(
+                stockUrl, HttpMethod.GET, null, Map.class);
             
-            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+            if (response.getStatusCode().is2xxSuccessful()) {
                 Map<String, Object> producto = response.getBody();
-                
-                // Verificación segura del stock
-                if (producto.containsKey("stock")) {
-                    Object stockObj = producto.get("stock");
-                    if (stockObj instanceof Integer) {
-                        Integer stock = (Integer) stockObj;
-                        return stock >= quantity;
-                    }
-                }
+                Integer stock = (Integer) producto.get("stock");
+                return stock >= quantity;
             }
         } catch (Exception e) {
             System.err.println("Error al validar stock: " + e.getMessage());
